@@ -24,27 +24,8 @@ jobs:
           # 获取当前日期（格式：2025-10-19）
           dangqianshijian=$(date +%Y-%m-%d)
           
-          # 使用awk在options列表中添加新日期
-          awk -v date="$dangqianshijian" '
-          /ib_Version:/ { in_section=1 }
-          in_section && /options:/ { in_options=1 }
-          in_options && /- '"'"'.*'"'"'/ { last_option=NR }
-          in_options && /^[[:space:]]*[^[:space:]#-]/ { 
-              # 在选项块结束后插入新日期
-              print "          - '\''" date "'\''"
-              in_options=0
-              in_section=0
-          }
-          { print }
-          END {
-              if (in_options) {
-                  # 如果文件结束时仍在选项块中
-                  print "          - '\''" date "'\''"
-              }
-          }
-          ' .github/workflows/workflow.yml > temp.yml
-          
-          mv temp.yml .github/workflows/workflow.yml
+          # 直接在 'new' 选项下方添加新日期
+          sed -i "/- 'new'/a \          - '$dangqianshijian'" .github/workflows/workflow.yml
 
       - name: Commit and push changes
         run: |
