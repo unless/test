@@ -1,32 +1,27 @@
 name: Update Workflow Automation
 
 on:
-  workflow_dispatch: # 手动触发
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *' # 每天 UTC 午夜运行
+    - cron: '0 0 * * *'
 
 jobs:
   changewf:
-    name: Change a workflow file
+    name: Direct update to main branch
     runs-on: ubuntu-22.04
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4.1.1
         with:
-          token: ${{ secrets.WORKFLOW_TOKEN }} # 使用高权限 PAT
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+          ref: main  # 确保在 main 分支上操作
 
       - name: Make change to workflow file
-        env:
-          GITHUB_TOKEN: ${{ github.token }} # 用于创建 PR
         run: |
-          # Create new branch
-          git switch -c "feature-$(date +%s)"
-
-          # Edit YOUR workflow file (确保路径和文件名正确！)
+          # 直接修改文件
           echo "# Automated update on $(date)" >> .github/workflows/workflow.yml
 
           git config user.name "github-actions"
@@ -35,10 +30,8 @@ jobs:
           git add .github/workflows/workflow.yml
           git commit -m "Automated workflow update"
 
-          git push origin HEAD # 使用 WORKFLOW_TOKEN 推送
+          # 直接推送到 main 分支
+          git push origin main
 
-          # 使用 GITHUB_TOKEN 创建 PR
-          gh pr create \
-            --title "Automated Workflow Update" \
-            --body "This PR updates the workflow file automatically." \
-            --base main # 目标分支名 (根据你的仓库修改)
+      - name: Success message
+        run: echo "✅ Changes pushed directly to main branch"
