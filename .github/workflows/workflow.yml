@@ -1,78 +1,81 @@
-name: Manual Workflow with Status Webhook
-
+name: 💿 St1_hook
 on:
-  workflow_dispatch:   # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      network_settings:
+        description: "请选择初始网络配置"
+        required: true
+        default: 'static'
+        type: choice
+        options:
+          - 'static'
+          - 'dhcp'
+      ipaddr:
+        description: '请输入管理IP（静态地址时必填）'
+        required: true
+        default: '192.168.111.1'
+      gateway:
+        description: '请输入默认网关（静态地址时必填）'
+        required: true
+        default: '192.168.5.1'
+      include_docker:
+        description: "是否集成Docker插件"
+        required: true
+        default: 'yes'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+      ib_Version:
+        description: '请选择需要的版本'
+        required: false
+        default: 'new'
+        type: choice
+          - '2025-10-19'
+        options:
+          - 'new'
+          - '2025-10-19'
+          - '2025-09-30'
+          - '2025-10-15'
+      repo_settings:
+        description: "unless/iStoreOS-Actions"
+        required: true
+        default: "unless/iStoreOS-Actions"
+        
+env:
+  VERSION: 24.10.3
 
 jobs:
-  build-and-notify:
-    runs-on: ubuntu-latest
-    outputs:
-      workflow_status: ${{ job.status }}
-      start_time: ${{ steps.start-time.outputs.start_time }}
-      end_time: ${{ steps.end-time.outputs.end_time || steps.set-failure-time.outputs.end_time }}
-    
+  build:
+    runs-on: ubuntu-22.04
     steps:
-      # 记录开始时间
-      - name: Record start time
-        id: start-time
-        run: echo "start_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-      
-      # 这里是您的工作流任务（可自定义）
-      - name: Run main tasks
-        run: |
-          echo "工作流任务执行中..."
-          # 这里添加您的实际任务命令
-          # 示例：模拟一个可能成功或失败的任务
-          if [ $((RANDOM % 2)) -eq 0 ]; then
-            echo "任务成功完成"
-          else
-            echo "任务失败" && exit 1
-          fi
-      
-      # 记录结束时间（仅在任务成功时执行）
-      - name: Record end time (on success)
-        if: success()
-        id: end-time
-        run: echo "end_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-    
-  # 无论成功失败都发送通知
-  after-job:
+    - name: Checkout code
+      uses: actions/checkout@v3
+  notify-webhook:
+    name: '📢 Webhook通知'
     runs-on: ubuntu-latest
-    needs: build-and-notify
-    if: always()  # 即使主任务失败也执行
-    
     steps:
-      # 处理失败情况下的结束时间
-      - name: Set end time for failed jobs
-        if: needs.build-and-notify.result == 'failure'
-        id: set-failure-time
-        run: echo "end_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-      
-      # 计算持续时间（单位：秒）
-      - name: Calculate duration
-        id: calc-duration
+      - name: 发送Webhook通知
         run: |
-          start=$(date -d "${{ needs.build-and-notify.outputs.start_time }}" +%s)
-          end=$(date -d "${{ needs.build-and-notify.outputs.end_time }}" +%s)
-          duration=$((end - start))
-          echo "duration_sec=$duration" >> $GITHUB_OUTPUT
-      
-      # 发送Webhook通知
-      - name: Send workflow status via webhook
-        uses: distributhor/workflow-webhook@v2.5.0
-        with:
-          url: ${{ secrets.WEBHOOK_URL }}
-          method: POST
-          headers: '{"Content-Type": "application/json"}'
-          data: |
-            {
-              "workflow_name": "${{ github.workflow }}",
-              "run_id": "${{ github.run_id }}",
-              "status": "${{ needs.build-and-notify.result }}",
-              "start_time": "${{ needs.build-and-notify.outputs.start_time }}",
-              "end_time": "${{ needs.build-and-notify.outputs.end_time }}",
-              "duration_sec": "${{ steps.calc-duration.outputs.duration_sec }}",
-              "triggered_by": "${{ github.actor }}",
-              "repo": "${{ github.repository }}",
-              "commit": "${{ github.sha }}"
-            }
+        
+          # 构建通知消息
+          MESSAGE="工作流状态: ${{ job.status }}\n"
+          MESSAGE+="工作流名称: ${{ github.workflow }}\n"
+          MESSAGE+="运行ID: ${{ github.run_id }}\n"
+          MESSAGE+="触发事件: ${{ github.event_name }}\n"
+          MESSAGE+="提交: ${{ github.sha }}\n"
+          MESSAGE+="详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # 发送到Webhook
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "content": "GitHub Actions 通知",
+              "embeds": [{
+                "title": "工作流完成通知",
+                "description": "'"${MESSAGE}"'",
+              }]
+            }' \
+            "${{ secrets.WEBHOOK_URL }}"
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
