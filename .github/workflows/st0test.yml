@@ -27,7 +27,7 @@ jobs:
           git switch -c "feature-$(date +%s)"
 
           # Edit YOUR workflow file (确保路径和文件名正确！)
-          echo "# Automated update on $(date)" >> .github/workflows/St1_Build-Rootfs-release.yml
+          echo "# Automated update on $(date)" >> .github/workflows/workflow.yml
 
           git config user.name "github-actions"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
