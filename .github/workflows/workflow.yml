@@ -77,6 +77,6 @@ jobs:
                 "color": '${{ job.status == 'success' && '65280' || '16711680' }}'
               }]
             }' \
-            "${{ secrets.WEBHOOK_URL }}"
+            https://webhook.uutool.cn/0b0849ca-ff91-42db-99b0-31ec5e70216b
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
