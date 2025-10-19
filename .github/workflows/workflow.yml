@@ -73,7 +73,7 @@ jobs:
               "content": "GitHub Actions 通知",
               "embeds": [{
                 "title": "工作流完成通知",
-                "description": "'"${MESSAGE}"'",
+                "description": "'"${MESSAGE}"'"
               }]
             }' \
             "${{ secrets.WEBHOOK_URL }}"
