@@ -35,44 +35,44 @@ jobs:
         id: end-time
         run: echo "end_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
     
-    # 无论成功失败都发送通知
-    after-job:
-      runs-on: ubuntu-latest
-      needs: build-and-notify
-      if: always()  # 即使主任务失败也执行
+  # 无论成功失败都发送通知
+  after-job:
+    runs-on: ubuntu-latest
+    needs: build-and-notify
+    if: always()  # 即使主任务失败也执行
+    
+    steps:
+      # 处理失败情况下的结束时间
+      - name: Set end time for failed jobs
+        if: needs.build-and-notify.result == 'failure'
+        id: set-failure-time
+        run: echo "end_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       
-      steps:
-        # 处理失败情况下的结束时间
-        - name: Set end time for failed jobs
-          if: needs.build-and-notify.result == 'failure'
-          id: set-failure-time
-          run: echo "end_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-        
-        # 计算持续时间（单位：秒）
-        - name: Calculate duration
-          id: calc-duration
-          run: |
-            start=$(date -d "${{ needs.build-and-notify.outputs.start_time }}" +%s)
-            end=$(date -d "${{ needs.build-and-notify.outputs.end_time }}" +%s)
-            duration=$((end - start))
-            echo "duration_sec=$duration" >> $GITHUB_OUTPUT
-        
-        # 发送Webhook通知
-        - name: Send workflow status via webhook
-          uses: distributhor/workflow-webhook@v2.5.0
-          with:
-            url: ${{ secrets.WEBHOOK_URL }}
-            method: POST
-            headers: '{"Content-Type": "application/json"}'
-            data: |
-              {
-                "workflow_name": "${{ github.workflow }}",
-                "run_id": "${{ github.run_id }}",
-                "status": "${{ needs.build-and-notify.result }}",
-                "start_time": "${{ needs.build-and-notify.outputs.start_time }}",
-                "end_time": "${{ needs.build-and-notify.outputs.end_time }}",
-                "duration_sec": "${{ steps.calc-duration.outputs.duration_sec }}",
-                "triggered_by": "${{ github.actor }}",
-                "repo": "${{ github.repository }}",
-                "commit": "${{ github.sha }}"
-              }
+      # 计算持续时间（单位：秒）
+      - name: Calculate duration
+        id: calc-duration
+        run: |
+          start=$(date -d "${{ needs.build-and-notify.outputs.start_time }}" +%s)
+          end=$(date -d "${{ needs.build-and-notify.outputs.end_time }}" +%s)
+          duration=$((end - start))
+          echo "duration_sec=$duration" >> $GITHUB_OUTPUT
+      
+      # 发送Webhook通知
+      - name: Send workflow status via webhook
+        uses: distributhor/workflow-webhook@v2.5.0
+        with:
+          url: ${{ secrets.WEBHOOK_URL }}
+          method: POST
+          headers: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "workflow_name": "${{ github.workflow }}",
+              "run_id": "${{ github.run_id }}",
+              "status": "${{ needs.build-and-notify.result }}",
+              "start_time": "${{ needs.build-and-notify.outputs.start_time }}",
+              "end_time": "${{ needs.build-and-notify.outputs.end_time }}",
+              "duration_sec": "${{ steps.calc-duration.outputs.duration_sec }}",
+              "triggered_by": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "commit": "${{ github.sha }}"
+            }
