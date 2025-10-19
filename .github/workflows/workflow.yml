@@ -51,111 +51,32 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: ⚙️ 设置可执行权限
-      run: | 
-        chmod +x arm64/build24.sh
-        chmod +x shell/*.sh
-
-    - name: ⚙️ 设置IP和网关
-      run: |
-        echo "当前网络配置路径"
-        CONFIG_PATH="./files/etc/uci-defaults/99-custom.sh"
-        echo $CONFIG_PATH
-        if [ "${{ inputs.network_settings }}" = "static" ]; then
-           echo "删除网络设置-dhcp"
-           sed -i '44,105d' "$CONFIG_PATH"
-           echo "替换默认配置"
-           sed -i "/ipaddr/s/192.168.111.1/${{ inputs.ipaddr }}/g" "$CONFIG_PATH"
-           
-        else
-           echo "删除网络设置-static"
-           sed -i '36,42d' "$CONFIG_PATH"
-        fi
-        echo "输出配置"
-        cat $CONFIG_PATH
-
-    - name: ⏬ 安装依赖
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev zstd curl unzip tree
-
-    - name: ⏬ 下载 ImageBuilder
-      run: |
-        # 判断是否提供了特定版本
-        if [ "${{ inputs.ib_Version }}" != "new" ]; then
-          echo "🔽 使用指定版本: ${{ inputs.ib_Version }}"
-          DOWNLOAD_URL="https://github.com/${{ inputs.repo_settings }}/releases/download/istoreos-imagebuilder-armsr-armv8/istoreos-imagebuilder-armsr-armv8-${{ inputs.ib_Version }}.tar.zst"
-        else
-          echo "🔍 未指定版本，查找最新版本..."
-          DOWNLOAD_URL=$(curl -s "https://api.github.com/repos/${{ inputs.repo_settings }}/releases" | jq -r '.[].assets[] | select(.name | startswith("istoreos-imagebuilder-armsr-armv8-")) | "\(.name) \(.browser_download_url)"' | sort -r | head -1 | awk '{print $2}')
-        fi
+  notify-webhook:
+    name: '📢 Webhook通知'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 发送Webhook通知
+        run: |
         
-        echo "📥 下载地址: $DOWNLOAD_URL"
-        curl -L -o imagebuilder.tar.zst "$DOWNLOAD_URL"
-        tar --use-compress-program=unzstd -xvf imagebuilder.tar.zst
-        mv istoreos-imagebuilder-* imagebuilder
+          # 构建通知消息
+          MESSAGE="工作流状态: ${{ job.status }}\n"
+          MESSAGE+="工作流名称: ${{ github.workflow }}\n"
+          MESSAGE+="运行ID: ${{ github.run_id }}\n"
+          MESSAGE+="触发事件: ${{ github.event_name }}\n"
+          MESSAGE+="提交: ${{ github.sha }}\n"
+          MESSAGE+="详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-    - name: ⏬ 复制并设置必备文件
-      run: |
-        cp arm64/{build24.sh,Makefile} imagebuilder/
-        #cp arm64/repositories.conf imagebuilder/
-        cp shell/{prepare-packages.sh,custom-packages.sh} imagebuilder/
-        find files/packages/ -name "*.ipk" -exec cp {} imagebuilder/packages/ \;
-        
-        mkdir -p imagebuilder/files/etc/{uci-defaults,opkg,banner1}
-        #添加开机启动脚本
-        cp files/etc/uci-defaults/99-custom.sh imagebuilder/files/etc/uci-defaults/
-        #替换O大打包脚本的默认banner
-        cp files/etc/banner imagebuilder/files/etc/banner1/
-        mkdir -p imagebuilder/files/etc/openclash/core
-        cp files/etc/openclash/core/clash_meta imagebuilder/files/etc/openclash/core/
-        #临时解决通过晶晨宝盒写入emmc后根分区变为只读状态问题
-        cp files/etc/rc.local imagebuilder/files/etc/
-        
-        cd imagebuilder
-        echo "启用rootfs.tar.gz配置并停用非必要配置"
-        sed -i 's/# CONFIG_TARGET_ROOTFS_TARGZ is not set/CONFIG_TARGET_ROOTFS_TARGZ=y/' .config
-        sed -i "s|CONFIG_TARGET_ROOTFS_SQUASHFS=.*|# CONFIG_TARGET_ROOTFS_SQUASHFS is not set|g" .config
-        sed -i "s|CONFIG_TARGET_IMAGES_GZIP=.*|# CONFIG_TARGET_IMAGES_GZIP is not set|g" .config
-        echo "打印action目录结构"
-        tree -L 1
-
-    - name: 🧱 构建iStoreOS-rootfs
-      working-directory: ./imagebuilder
-      run: |
-        echo "打印imagebuilder目录结构"
-        tree -L 1
-        echo "打印repositories"
-        cat repositories.conf
-        echo "打印Makefile"
-        cat Makefile |grep here
-        bash ./build24.sh
-
-    - name: 📦 打印产出rootfs
-      run: |
-        echo "打印bin目录"
-        ls -lah imagebuilder/bin/targets/armsr/armv8/
-
-    - name: 🚀 上传到 Release
-      uses: softprops/action-gh-release@v2.2.1
-      with:
-        tag_name: iStoreOS-${{ env.VERSION }}-RELEASE-${{ inputs.network_settings }}
-        body: |
-          📌 版本： iStoreOS-${{ env.VERSION }}-RELEASE（imagebuilder构建，稳定版）
-          
-          📂 来源： https://fw.koolcenter.com/iStoreOS/ib/armsr/
-          
-          🧠 内核： Please Login to iStoreOS → System → Amlogic Service → Replace the Kernel
-          
-          🧩 集成： 包含了基础系统组件、驱动、网络工具、容器支持、LuCI界面及插件等。与官方集成列表基本一致
-          
-          👤 用户名： root
-          
-          🔒 密码： 无
-          
-          🌐 IP： ${{ inputs.network_settings == 'static' && inputs.ipaddr || '单网口-动态获取（从上级路由找寻）；多网口-IP：192.168.100.1' }}
-        files: |
-          imagebuilder/bin/targets/armsr/armv8/*generic-rootfs.tar.gz
-      env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          # 发送到Webhook
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "content": "GitHub Actions 通知",
+              "embeds": [{
+                "title": "工作流完成通知",
+                "description": "'"${MESSAGE}"'",
+                "color": '${{ job.status == 'success' && '65280' || '16711680' }}'
+              }]
+            }' \
+            "${{ secrets.WEBHOOK_URL }}"
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
