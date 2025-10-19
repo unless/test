@@ -59,10 +59,10 @@ jobs:
         run: |
         
           # 构建通知消息
-          MESSAGE="工作流状态: ${{ job.status }}<br>"
-          MESSAGE+="工作流名称: ${{ github.workflow }}<br>"
+          MESSAGE="工作流状态: ${{ job.status }}\n"
+          MESSAGE+="工作流名称: ${{ github.workflow }}\n"
           MESSAGE+="运行ID: ${{ github.run_id }}\n"
-          MESSAGE+="触发事件: ${{ github.event_name }}<br>"
+          MESSAGE+="触发事件: ${{ github.event_name }}\n"
           MESSAGE+="提交: ${{ github.sha }}\n"
           MESSAGE+="详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
