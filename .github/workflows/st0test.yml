@@ -1,7 +1,9 @@
 name: 💿 St0_test
 permissions:
   contents: write
+  actions: write
   pull-requests: write
+  packages: write
 on:
   schedule:
     # 注意：GitHub Actions 使用 UTC 时间
