@@ -40,6 +40,11 @@ jobs:
   trigger-st0:
     name: '[ST0] 同步 iStoreOS 镜像'
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: write
+      packages: write
     outputs:
       # 定义输出，供后续任务使用
       server_date: ${{ steps.sync-ib.outputs.server_date }}
