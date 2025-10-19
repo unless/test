@@ -79,17 +79,12 @@ jobs:
       - name: 更新工作流选项
         if: steps.sync-ib.outputs.should_update == 'true'
         run: |
-          # 获取当前日期（格式：2025-10-19）
-          SERVER_DATE="${{ steps.sync-ib.outputs.server_date }}"
-          
           # 在'new'选项下方添加新日期
-          sed -i "/- 'new'/a \          - '$SERVER_DATE'" .github/workflows/St1_Build-Rootfs-release.yml
-          
-          # 提交更改
+          sed -i "/- 'new'/a \          - '${{ steps.sync-ib.outputs.server_date }}'" .github/workflows/St1_Build-Rootfs-release.yml
           git config user.name "github-actions"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/workflows/St1_Build-Rootfs-release.yml
-          git commit -m "添加新版本选项: $dangqianshijian"
+          git commit -m "添加新版本选项: ${{ steps.sync-ib.outputs.server_date }}"
           git push origin main
 
       - name: 🚀 上传到 Release (如需要)
@@ -104,5 +99,3 @@ jobs:
             ${{ steps.sync-ib.outputs.file_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-
-
