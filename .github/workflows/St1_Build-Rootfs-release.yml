@@ -1,41 +1,44 @@
-name: 💿 St1_Build-Rootfs-release
+name: Update Workflow Automation
+
 on:
-  workflow_dispatch:
-    inputs:
-      network_settings:
-        description: "请选择初始网络配置"
-        required: true
-        default: 'static'
-        type: choice
-        options:
-          - 'static'
-          - 'dhcp'
-      ipaddr:
-        description: '请输入管理IP（静态地址时必填）'
-        required: true
-        default: '192.168.111.1'
-      gateway:
-        description: '请输入默认网关（静态地址时必填）'
-        required: true
-        default: '192.168.5.1'
-      include_docker:
-        description: "是否集成Docker插件"
-        required: true
-        default: 'yes'
-        type: choice
-        options:
-          - 'yes'
-          - 'no'
-      ib_Version:
-        description: '请选择需要的版本'
-        required: false
-        default: 'new'
-        type: choice
-        options:
-          - 'new'
-          - '2025-09-30'
-          - '2025-10-15'
-      repo_settings:
-        description: "unless/iStoreOS-Actions"
-        required: true
-        default: "unless/iStoreOS-Actions"
+  workflow_dispatch: # 手动触发
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 午夜运行
+
+jobs:
+  changewf:
+    name: Change a workflow file
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.1.1
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }} # 使用高权限 PAT
+
+      - name: Make change to workflow file
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # 用于创建 PR
+        run: |
+          # Create new branch
+          git switch -c "feature-$(date +%s)"
+
+          # Edit YOUR workflow file (确保路径和文件名正确！)
+          echo "# Automated update on $(date)" >> .github/workflows/St1_Build-Rootfs-release.yml
+
+          git config user.name "github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .github/workflows/workflow.yml
+          git commit -m "Automated workflow update"
+
+          git push origin HEAD # 使用 WORKFLOW_TOKEN 推送
+
+          # 使用 GITHUB_TOKEN 创建 PR
+          gh pr create \
+            --title "Automated Workflow Update" \
+            --body "This PR updates the workflow file automatically." \
+            --base main # 目标分支名 (根据你的仓库修改)
