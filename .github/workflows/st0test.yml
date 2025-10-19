@@ -105,28 +105,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
-  # 其余部分保持不变...
-  trigger-st1:
-    name: '[ST1] 触发并等待 Rootfs 构建'
-    runs-on: ubuntu-latest
-    needs: trigger-st0
-    if: |
-      (github.event_name == 'schedule' && needs.trigger-st0.outputs.should_update == 'true') ||
-      (github.event_name == 'workflow_dispatch')
-    steps:
-      # ...（保持不变）
 
-  trigger-st2:
-    name: '[ST2] 触发并等待 iStoreOS 构建'
-    runs-on: ubuntu-latest
-    needs: trigger-st1
-    steps:
-      # ...（保持不变）
-          
-  notify-webhook:
-    name: '📢 Webhook通知'
-    runs-on: ubuntu-latest
-    needs: [trigger-st0, trigger-st1, trigger-st2]
-    if: always()
-    steps:
-      # ...（保持不变）
