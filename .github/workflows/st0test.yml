@@ -7,7 +7,7 @@ on:
 
 jobs:
   changewf:
-    name: Direct update to main branch
+    name: Update workflow with current date
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -17,21 +17,40 @@ jobs:
         uses: actions/checkout@v4.1.1
         with:
           token: ${{ secrets.WORKFLOW_TOKEN }}
-          ref: main  # 确保在 main 分支上操作
+          ref: main
 
-      - name: Make change to workflow file
+      - name: Add current date to options
         run: |
-          # 直接修改文件
-          echo "# Automated update on $(date)" >> .github/workflows/workflow.yml
+          # 获取当前日期（格式：2025-10-19）
+          dangqianshijian=$(date +%Y-%m-%d)
+          
+          # 使用awk在options列表中添加新日期
+          awk -v date="$dangqianshijian" '
+          /ib_Version:/ { in_section=1 }
+          in_section && /options:/ { in_options=1 }
+          in_options && /- '"'"'.*'"'"'/ { last_option=NR }
+          in_options && /^[[:space:]]*[^[:space:]#-]/ { 
+              # 在选项块结束后插入新日期
+              print "          - '\''" date "'\''"
+              in_options=0
+              in_section=0
+          }
+          { print }
+          END {
+              if (in_options) {
+                  # 如果文件结束时仍在选项块中
+                  print "          - '\''" date "'\''"
+              }
+          }
+          ' .github/workflows/workflow.yml > temp.yml
+          
+          mv temp.yml .github/workflows/workflow.yml
 
+      - name: Commit and push changes
+        run: |
           git config user.name "github-actions"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
+          
           git add .github/workflows/workflow.yml
-          git commit -m "Automated workflow update"
-
-          # 直接推送到 main 分支
+          git commit -m "Add $dangqianshijian to version options"
           git push origin main
-
-      - name: Success message
-        run: echo "✅ Changes pushed directly to main branch"
